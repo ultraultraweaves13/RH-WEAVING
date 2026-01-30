@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rigid Heddle Project Planner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #F7F5F2;
+    --primary: #4A6F5E;
+    --secondary: #8FB3A2;
+    --accent: #C8B88A;
+    --text: #2E2E2E;
+    --card: #FFFFFF;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 32px 20px;
+}
+
+h1, h2 {
+    font-family: "Libre Baskerville", serif;
+    color: var(--primary);
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+label {
+    display: block;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+select, input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    font-size: 0.95rem;
+}
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 16px;
+}
+
+button:hover {
+    background: #3e5f51;
+}
+
+.small {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 6px;
+}
+
+svg {
+    margin-top: 12px;
+}
+
+.footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #777;
+    margin-top: 40px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Rigid Heddle Project Planner</h1>
+    <p class="small">A calm, practical planning tool for Ashford rigid heddle looms.</p>
+
+    <div class="card">
+        <h2>1. Project & Yarn</h2>
+
+        <label>Project Type</label>
+        <select id="projectType" onchange="applyProjectLogic()">
+            <option value="">Select project</option>
+            <option value="upholstery">Upholstery / Heavy Use</option>
+            <option value="garments">Garments & Wearables</option>
+            <option value="home">Home Fabrics</option>
+            <option value="sampler">Samplers / Learning</option>
+        </select>
+
+        <label>Recommended Yarn</label>
+        <select id="yarnType" onchange="applyYarn()"></select>
+
+        <label>Suggested Sett (EPI)</label>
+        <input type="number" id="epi">
+
+        <label>Ashford Reed</label>
+        <input type="text" id="reed" readonly>
+    </div>
+
+    <div class="card">
+        <h2>2. Structure & Threading</h2>
+
+        <label>Weave Structure</label>
+        <select id="structure" onchange="drawThreading()">
+            <option value="plain">Plain Weave</option>
+            <option value="twill">2/2 Twill (Pickup)</option>
+            <option value="krokbragd">Krokbragd</option>
+            <option value="double">Double Weave</option>
+        </select>
+
+        <div id="threadingVisual"></div>
+    </div>
+
+    <div class="card">
+        <h2>3. Size & Yarn Estimate</h2>
+
+        <label>Warp Width (inches)</label>
+        <input type="number" id="warpWidth">
+
+        <label>Warp Length (inches)</label>
+        <input type="number" id="warpLength">
+
+        <label>Extra Length for Hand Manipulation (inches)</label>
+        <input type="number" id="extraGaps">
+
+        <button onclick="calculate()">Calculate Yarn</button>
+
+        <div id="results"></div>
+    </div>
+
+    <div class="footer">
+        Designed for rigid heddle weavers · Inches & meters · Ashford-compatible
+    </div>
+</div>
+
+<script>
+const projectData = {
+    upholstery: [
+        {name:"Cotton 5/2", epi:12, mpg:125},
+        {name:"DK Cotton", epi:10, mpg:200},
+        {name:"Cottolin 8/2", epi:14, mpg:150}
+    ],
+    garments: [
+        {name:"Cotton 8/2", epi:16, mpg:168},
+        {name:"Silk 16/2", epi:18, mpg:400},
+        {name:"Merino 16/2", epi:16, mpg:320}
+    ],
+    home: [
+        {name:"Cotton 8/2", epi:16, mpg:168},
+        {name:"Cotton 10/2", epi:18, mpg:210},
+        {name:"Cottolin 8/2", epi:16, mpg:150}
+    ],
+    sampler: [
+        {name:"Cotton 8/2", epi:14, mpg:168},
+        {name:"Sport Cotton", epi:12, mpg:300}
+    ]
+};
+
+let currentYarn = null;
+
+function applyProjectLogic() {
+    yarnType.innerHTML = "";
+    projectData[projectType.value].forEach((y,i)=>{
+        let o=document.createElement("option");
+        o.value=i; o.text=y.name;
+        yarnType.add(o);
+    });
+    applyYarn();
+}
+
+function applyYarn() {
+    currentYarn = projectData[projectType.value][yarnType.value];
+    epi.value = currentYarn.epi;
+    const reeds=[7.5,10,12.5,15];
+    reed.value = reeds.reduce((a,b)=>Math.abs(b-currentYarn.epi)<Math.abs(a-currentYarn.epi)?b:a)+" dpi";
+}
+
+function drawThreading() {
+    const patterns = {
+        plain:["●","▢","●","▢"],
+        twill:["●","▢","●","●","▢","●"],
+        krokbragd:["▢","●","▢","●","●"],
+        double:["●","●","▢","▢"]
+    };
+    let x=20;
+    let svg=patterns[structure.value].map(s=>{
+        let el=s==="●"
+        ?`<circle cx="${x}" cy="30" r="8" fill="#4A6F5E"/>`
+        :`<rect x="${x-8}" y="22" width="16" height="16" fill="#8FB3A2"/>`;
+        x+=30; return el;
+    }).join("");
+    threadingVisual.innerHTML=`<svg width="300" height="60">${svg}</svg>
+    <div class="small">● hole &nbsp; ▢ slot</div>`;
+}
+
+function calculate() {
+    const ends = warpWidth.value * epi.value;
+    const warpM = (parseFloat(warpLength.value)+parseFloat(extraGaps.value||0))*0.0254;
+    const grams = (warpM * ends) / currentYarn.mpg;
+
+    results.innerHTML = `
+        <p><b>Total warp ends:</b> ${ends.toFixed(0)}</p>
+        <p><b>Estimated yarn:</b> ${grams.toFixed(1)} g</p>
+        <p class="small">Includes allowance for structure & hand manipulation.</p>
+    `;
+}
+
+drawThreading();
+</script>
+
+</body>
+</html>
